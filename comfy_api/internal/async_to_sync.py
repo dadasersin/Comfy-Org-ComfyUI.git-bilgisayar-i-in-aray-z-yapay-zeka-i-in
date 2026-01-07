@@ -282,7 +282,7 @@ class AsyncToSyncConverter:
                                 setattr(self._async_instance, attr_name, async_instance)
                             except Exception as e:
                                 logging.warning(
-                                    f"Failed to create instance for {attr_name}: {e}"
+                                    "Failed to create instance for %s: %s", attr_name, e
                                 )
 
             # Handle other instance attributes that might not be annotated
@@ -962,7 +962,7 @@ class AsyncToSyncConverter:
                     seen.add(imp)
                     unique_imports.append(imp)
                 else:
-                    logging.warning(f"Duplicate import detected: {imp}")
+                    logging.warning("Duplicate import detected: %s", imp)
 
             # Replace the placeholder with actual imports
             stub_content[imports_placeholder_index : imports_placeholder_index + 1] = (
@@ -976,12 +976,12 @@ class AsyncToSyncConverter:
             with open(sync_stub_path, "w") as f:
                 f.write("\n".join(stub_content))
 
-            logging.info(f"Generated stub file: {sync_stub_path}")
+            logging.info("Generated stub file: %s", sync_stub_path)
 
         except Exception as e:
             # If stub generation fails, log the error but don't break the main functionality
             logging.error(
-                f"Error generating stub file for {sync_class.__name__}: {str(e)}"
+                "Error generating stub file for %s: %s", sync_class.__name__, str(e)
             )
             import traceback
 

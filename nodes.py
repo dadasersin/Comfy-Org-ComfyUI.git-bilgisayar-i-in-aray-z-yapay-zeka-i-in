@@ -2142,7 +2142,7 @@ async def load_custom_node(module_path: str, ignore=set(), module_parent="custom
         sys_module_name = module_path.replace(".", "_x_")
 
     try:
-        logging.debug("Trying to load custom node {}".format(module_path))
+        logging.debug("Trying to load custom node %s", module_path)
         if os.path.isfile(module_path):
             module_spec = importlib.util.spec_from_file_location(sys_module_name, module_path)
             module_dir = os.path.split(module_path)[0]
@@ -2171,9 +2171,9 @@ async def load_custom_node(module_path: str, ignore=set(), module_parent="custom
 
                     EXTENSION_WEB_DIRS[project_name] = web_dir_path
 
-                    logging.info("Automatically register web folder {} for {}".format(web_dir_name, project_name))
+                    logging.info("Automatically register web folder %s for %s", web_dir_name, project_name)
         except Exception as e:
-            logging.warning(f"Unable to parse pyproject.toml due to lack dependency pydantic-settings, please run 'pip install -r requirements.txt': {e}")
+            logging.warning("Unable to parse pyproject.toml due to lack dependency pydantic-settings, please run 'pip install -r requirements.txt': %s", e)
 
         if hasattr(module, "WEB_DIRECTORY") and getattr(module, "WEB_DIRECTORY") is not None:
             web_dir = os.path.abspath(os.path.join(module_dir, getattr(module, "WEB_DIRECTORY")))
@@ -2193,7 +2193,7 @@ async def load_custom_node(module_path: str, ignore=set(), module_parent="custom
         elif hasattr(module, "comfy_entrypoint"):
             entrypoint = getattr(module, "comfy_entrypoint")
             if not callable(entrypoint):
-                logging.warning(f"comfy_entrypoint in {module_path} is not callable, skipping.")
+                logging.warning("comfy_entrypoint in %s is not callable, skipping.", module_path)
                 return False
             try:
                 if inspect.iscoroutinefunction(entrypoint):
@@ -2201,11 +2201,11 @@ async def load_custom_node(module_path: str, ignore=set(), module_parent="custom
                 else:
                     extension = entrypoint()
                 if not isinstance(extension, ComfyExtension):
-                    logging.warning(f"comfy_entrypoint in {module_path} did not return a ComfyExtension, skipping.")
+                    logging.warning("comfy_entrypoint in %s did not return a ComfyExtension, skipping.", module_path)
                     return False
                 node_list = await extension.get_node_list()
                 if not isinstance(node_list, list):
-                    logging.warning(f"comfy_entrypoint in {module_path} did not return a list of nodes, skipping.")
+                    logging.warning("comfy_entrypoint in %s did not return a list of nodes, skipping.", module_path)
                     return False
                 for node_cls in node_list:
                     node_cls: io.ComfyNode
@@ -2217,14 +2217,14 @@ async def load_custom_node(module_path: str, ignore=set(), module_parent="custom
                         NODE_DISPLAY_NAME_MAPPINGS[schema.node_id] = schema.display_name
                 return True
             except Exception as e:
-                logging.warning(f"Error while calling comfy_entrypoint in {module_path}: {e}")
+                logging.warning("Error while calling comfy_entrypoint in %s: %s", module_path, e)
                 return False
         else:
-            logging.warning(f"Skip {module_path} module for custom nodes due to the lack of NODE_CLASS_MAPPINGS or NODES_LIST (need one).")
+            logging.warning("Skip %s module for custom nodes due to the lack of NODE_CLASS_MAPPINGS or NODES_LIST (need one).", module_path)
             return False
     except Exception as e:
         logging.warning(traceback.format_exc())
-        logging.warning(f"Cannot import {module_path} module for custom nodes: {e}")
+        logging.warning("Cannot import %s module for custom nodes: %s", module_path, e)
         return False
 
 async def init_external_custom_nodes():
@@ -2252,12 +2252,12 @@ async def init_external_custom_nodes():
             if module_path.endswith(".disabled"):
                 continue
             if args.disable_all_custom_nodes and possible_module not in args.whitelist_custom_nodes:
-                logging.info(f"Skipping {possible_module} due to disable_all_custom_nodes and whitelist_custom_nodes")
+                logging.info("Skipping %s due to disable_all_custom_nodes and whitelist_custom_nodes", possible_module)
                 continue
 
             if args.enable_manager:
                 if comfyui_manager.should_be_disabled(module_path):
-                    logging.info(f"Blocked by policy: {module_path}")
+                    logging.info("Blocked by policy: %s", module_path)
                     continue
 
             time_before = time.perf_counter()
@@ -2271,7 +2271,7 @@ async def init_external_custom_nodes():
                 import_message = ""
             else:
                 import_message = " (IMPORT FAILED)"
-            logging.info("{:6.1f} seconds{}: {}".format(n[0], import_message, n[1]))
+            logging.info("%6.1f seconds%s: %s", n[0], import_message, n[1])
         logging.info("")
 
 async def init_builtin_extra_nodes():
@@ -2440,7 +2440,7 @@ async def init_extra_nodes(init_custom_nodes=True, init_api_nodes=True):
     if len(import_failed_api) > 0:
         logging.warning("WARNING: some comfy_api_nodes/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
         for node in import_failed_api:
-            logging.warning("IMPORT FAILED: {}".format(node))
+            logging.warning("IMPORT FAILED: %s", node)
         logging.warning("\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
         if args.windows_standalone_build:
             logging.warning("Please run the update script: update/update_comfyui.bat")
@@ -2451,7 +2451,8 @@ async def init_extra_nodes(init_custom_nodes=True, init_api_nodes=True):
     if len(import_failed) > 0:
         logging.warning("WARNING: some comfy_extras/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
         for node in import_failed:
-            logging.warning("IMPORT FAILED: {}".format(node))
+            logging.warning("IMPORT FAILED: %s", node)
+            # logging.warning("IMPORT FAILED: {}".format(node))
         logging.warning("\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
         if args.windows_standalone_build:
             logging.warning("Please run the update script: update/update_comfyui.bat")

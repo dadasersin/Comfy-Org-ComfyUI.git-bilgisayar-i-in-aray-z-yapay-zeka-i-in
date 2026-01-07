@@ -83,7 +83,7 @@ class IsChangedCache:
             is_changed = await resolve_map_node_over_list_results(is_changed)
             node["is_changed"] = [None if isinstance(x, ExecutionBlocker) else x for x in is_changed]
         except Exception as e:
-            logging.warning("WARNING: {}".format(e))
+            logging.warning("WARNING: %s", e)
             node["is_changed"] = float("NaN")
         finally:
             self.is_changed[node_id] = node["is_changed"]
@@ -595,19 +595,19 @@ async def execute(server, dynprompt, caches, current_item, extra_data, executed,
             for name, inputs in input_data_all.items():
                 input_data_formatted[name] = [format_value(x) for x in inputs]
 
-        logging.error(f"!!! Exception during processing !!! {ex}")
+        logging.error("!!! Exception during processing !!! %s", ex)
         logging.error(traceback.format_exc())
         tips = ""
 
         if isinstance(ex, comfy.model_management.OOM_EXCEPTION):
             tips = "This error means you ran out of memory on your GPU.\n\nTIPS: If the workflow worked before you might have accidentally set the batch_size to a large number."
-            logging.info("Memory summary: {}".format(comfy.model_management.debug_memory_summary()))
+            logging.info("Memory summary: %s", comfy.model_management.debug_memory_summary())
             logging.error("Got an OOM, unloading all loaded models.")
             comfy.model_management.unload_all_models()
 
         error_details = {
             "node_id": real_node_id,
-            "exception_message": "{}\n{}".format(ex, tips),
+            "exception_message": "%s\n%s" % (ex, tips),
             "exception_type": exception_type,
             "traceback": traceback.format_tb(tb),
             "current_inputs": input_data_formatted
@@ -1061,11 +1061,11 @@ async def validate_prompt(prompt_id, prompt, partial_execution_list: Union[list[
         if valid is True:
             good_outputs.add(o)
         else:
-            logging.error(f"Failed to validate prompt for output {o}:")
+            logging.error("Failed to validate prompt for output %s:", o)
             if len(reasons) > 0:
                 logging.error("* (prompt):")
                 for reason in reasons:
-                    logging.error(f"  - {reason['message']}: {reason['details']}")
+                    logging.error("  - %s: %s", reason['message'], reason['details'])
             errors += [(o, reasons)]
             for node_id, result in validated.items():
                 valid = result[0]
@@ -1081,9 +1081,9 @@ async def validate_prompt(prompt_id, prompt, partial_execution_list: Union[list[
                             "dependent_outputs": [],
                             "class_type": class_type
                         }
-                        logging.error(f"* {class_type} {node_id}:")
+                        logging.error("* %s %s:", class_type, node_id)
                         for reason in reasons:
-                            logging.error(f"  - {reason['message']}: {reason['details']}")
+                            logging.error("  - %s: %s", reason['message'], reason['details'])
                     node_errors[node_id]["dependent_outputs"].append(o)
             logging.error("Output will be ignored")
 

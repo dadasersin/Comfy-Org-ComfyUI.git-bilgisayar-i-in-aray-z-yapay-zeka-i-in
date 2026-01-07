@@ -110,7 +110,7 @@ class LoadImageTextDataSetFromFolderNode(io.ComfyNode):
 
     @classmethod
     def execute(cls, folder):
-        logging.info(f"Loading images from folder: {folder}")
+        logging.info("Loading images from folder: %s", folder)
 
         sub_input_dir = os.path.join(folder_paths.get_input_directory(), folder)
         valid_extensions = [".png", ".jpg", ".jpeg", ".webp"]
@@ -149,7 +149,7 @@ class LoadImageTextDataSetFromFolderNode(io.ComfyNode):
 
         output_tensor = load_and_process_images(image_files, sub_input_dir)
 
-        logging.info(f"Loaded {len(output_tensor)} images from {sub_input_dir}.")
+        logging.info("Loaded %s images from %s.", len(output_tensor), sub_input_dir)
         return io.NodeOutput(output_tensor, captions)
 
 
@@ -236,7 +236,7 @@ class SaveImageDataSetToFolderNode(io.ComfyNode):
         output_dir = os.path.join(folder_paths.get_output_directory(), folder_name)
         saved_files = save_images_to_folder(images, output_dir, filename_prefix)
 
-        logging.info(f"Saved {len(saved_files)} images to {output_dir}.")
+        logging.info("Saved %s images to %s.", len(saved_files), output_dir)
         return io.NodeOutput()
 
 
@@ -283,7 +283,7 @@ class SaveImageTextDataSetToFolderNode(io.ComfyNode):
             with open(caption_path, "w", encoding="utf-8") as f:
                 f.write(caption)
 
-        logging.info(f"Saved {len(saved_files)} images and captions to {output_dir}.")
+        logging.info("Saved %s images and captions to %s.", len(saved_files), output_dir)
         return io.NodeOutput()
 
 
@@ -1002,7 +1002,7 @@ class ImageDeduplicationNode(ImageProcessingNode):
                 if similarity >= similarity_threshold:
                     is_duplicate = True
                     logging.info(
-                        f"Image {i} is similar to image {j} (similarity: {similarity:.3f}), skipping"
+                        "Image %d is similar to image %d (similarity: %.3f), skipping", i, j, similarity
                     )
                     break
 
@@ -1012,7 +1012,7 @@ class ImageDeduplicationNode(ImageProcessingNode):
         # Return only unique images
         unique_images = [images[i] for i in keep_indices]
         logging.info(
-            f"Deduplication: kept {len(unique_images)} out of {len(images)} images"
+            "Deduplication: kept %d out of %d images", len(unique_images), len(images)
         )
         return unique_images
 
@@ -1086,7 +1086,7 @@ class ImageGridNode(ImageProcessingNode):
             grid.paste(img, (x, y))
 
         logging.info(
-            f"Created {columns}x{rows} grid with {num_images} images ({grid_width}x{grid_height})"
+            "Created %d x %d grid with %d images (%d x %d)", columns, rows, num_images, grid_width, grid_height
         )
         return pil_to_tensor(grid)
 
@@ -1104,7 +1104,7 @@ class MergeImageListsNode(ImageProcessingNode):
         """Simply return the images list (already merged by input handling)."""
         # When multiple list inputs are connected, they're concatenated
         # For now, this is a simple pass-through
-        logging.info(f"Merged image list contains {len(images)} images")
+        logging.info("Merged image list contains %s images", len(images))
         return images
 
 
@@ -1121,7 +1121,7 @@ class MergeTextListsNode(TextProcessingNode):
         """Simply return the texts list (already merged by input handling)."""
         # When multiple list inputs are connected, they're concatenated
         # For now, this is a simple pass-through
-        logging.info(f"Merged text list contains {len(texts)} texts")
+        logging.info("Merged text list contains %s texts", len(texts))
         return texts
 
 
@@ -1214,10 +1214,10 @@ class ResolutionBucket(io.ComfyNode):
             output_conditions.append(bucket_data["conditions"])
 
             logging.info(
-                f"Resolution bucket ({h}x{w}): {len(bucket_data['latents'])} samples"
+                "Resolution bucket (%d x %d): %d samples", h, w, len(bucket_data["latents"])
             )
 
-        logging.info(f"Created {len(buckets)} resolution buckets from {len(flat_latents)} samples")
+        logging.info("Created %s resolution buckets from %s samples", len(buckets), len(flat_latents))
         return io.NodeOutput(output_latents, output_conditions)
 
 
@@ -1283,7 +1283,7 @@ class MakeTrainingDataset(io.ComfyNode):
             )
 
         # Encode images with VAE
-        logging.info(f"Encoding {num_images} images with VAE...")
+        logging.info("Encoding %s images with VAE...", num_images)
         latents_list = []  # list[{"samples": tensor}]
         for img_tensor in images:
             # img_tensor is [1, H, W, 3]
@@ -1291,7 +1291,7 @@ class MakeTrainingDataset(io.ComfyNode):
             latents_list.append({"samples": latent_tensor})
 
         # Encode texts with CLIP
-        logging.info(f"Encoding {len(texts)} texts with CLIP...")
+        logging.info("Encoding %s texts with CLIP...", len(texts))
         conditioning_list = []  # list[list[cond]]
         for text in texts:
             if text == "":
@@ -1302,7 +1302,7 @@ class MakeTrainingDataset(io.ComfyNode):
             conditioning_list.append(cond)
 
         logging.info(
-            f"Created dataset with {len(latents_list)} latents and {len(conditioning_list)} conditioning."
+            "Created dataset with %d latents and %d conditioning.", len(latents_list), len(conditioning_list)
         )
         return io.NodeOutput(latents_list, conditioning_list)
 
@@ -1369,7 +1369,7 @@ class SaveTrainingDataset(io.ComfyNode):
         num_shards = (num_samples + shard_size - 1) // shard_size  # Ceiling division
 
         logging.info(
-            f"Saving {num_samples} samples to {num_shards} shards in {output_dir}..."
+            "Saving %d samples to %d shards in %s...", num_samples, num_shards, output_dir
         )
 
         # Save data in shards
@@ -1391,7 +1391,7 @@ class SaveTrainingDataset(io.ComfyNode):
                 torch.save(shard_data, f)
 
             logging.info(
-                f"Saved shard {shard_idx + 1}/{num_shards}: {shard_filename} ({end_idx - start_idx} samples)"
+                "Saved shard %d/%d: %s (%d samples)", shard_idx + 1, num_shards, shard_filename, end_idx - start_idx
             )
 
         # Save metadata
@@ -1404,7 +1404,7 @@ class SaveTrainingDataset(io.ComfyNode):
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
-        logging.info(f"Successfully saved {num_samples} samples to {output_dir}.")
+        logging.info("Successfully saved %s samples to %s.", num_samples, output_dir)
         return io.NodeOutput()
 
 
@@ -1459,7 +1459,7 @@ class LoadTrainingDataset(io.ComfyNode):
         if not shard_files:
             raise ValueError(f"No shard files found in {dataset_dir}")
 
-        logging.info(f"Loading {len(shard_files)} shards from {dataset_dir}...")
+        logging.info("Loading %s shards from %s...", len(shard_files), dataset_dir)
 
         # Load all shards
         all_latents = []  # list[{"samples": tensor}]
@@ -1474,10 +1474,10 @@ class LoadTrainingDataset(io.ComfyNode):
             all_latents.extend(shard_data["latents"])
             all_conditioning.extend(shard_data["conditioning"])
 
-            logging.info(f"Loaded {shard_file}: {len(shard_data['latents'])} samples")
+            logging.info("Loaded %s: %s samples", shard_file, len(shard_data['latents']))
 
         logging.info(
-            f"Successfully loaded {len(all_latents)} samples from {dataset_dir}."
+            "Successfully loaded %d samples from %s.", len(all_latents), dataset_dir
         )
         return io.NodeOutput(all_latents, all_conditioning)
 
