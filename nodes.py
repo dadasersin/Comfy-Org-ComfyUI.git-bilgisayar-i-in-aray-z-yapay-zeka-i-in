@@ -2389,10 +2389,10 @@ async def init_builtin_api_nodes():
         "nodes_openai.py",
         "nodes_minimax.py",
         "nodes_veo2.py",
-        "nodes_kling.py",
+        # "nodes_kling.py",  # Now loaded dynamically via dynamic_nodes.py
         "nodes_bfl.py",
         "nodes_bytedance.py",
-        "nodes_ltxv.py",
+        # "nodes_ltxv.py",  # Now loaded dynamically via dynamic_nodes.py
         "nodes_luma.py",
         "nodes_recraft.py",
         "nodes_pixverse.py",
@@ -2407,6 +2407,7 @@ async def init_builtin_api_nodes():
         "nodes_gemini.py",
         "nodes_vidu.py",
         "nodes_wan.py",
+        "dynamic_nodes.py",  # Dynamic partner nodes from comfy-api (LTXV, Kling)
     ]
 
     if not await load_custom_node(os.path.join(api_nodes_dir, "canary.py"), module_parent="comfy_api_nodes"):
