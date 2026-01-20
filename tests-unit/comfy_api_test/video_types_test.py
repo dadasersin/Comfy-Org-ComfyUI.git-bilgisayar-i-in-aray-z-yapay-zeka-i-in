@@ -6,7 +6,7 @@ import av
 import io
 from fractions import Fraction
 from comfy_api.input_impl.video_types import VideoFromFile, VideoFromComponents
-from comfy_api.util.video_types import VideoComponents
+from comfy_api.util.video_types import VideoComponents, VideoSpeedPreset, quality_to_crf
 from comfy_api.input.basic_types import AudioInput
 from av.error import InvalidDataError
 
@@ -237,3 +237,71 @@ def test_duration_consistency(video_components):
     manual_duration = float(components.images.shape[0] / components.frame_rate)
 
     assert duration == pytest.approx(manual_duration)
+
+
+class TestVideoSpeedPreset:
+    """Tests for VideoSpeedPreset enum and its methods."""
+
+    def test_as_input_returns_all_values(self):
+        """as_input() returns all preset values"""
+        values = VideoSpeedPreset.as_input()
+        assert values == ["auto", "Fastest", "Fast", "Balanced", "Quality", "Best"]
+
+    def test_to_ffmpeg_preset_h264(self):
+        """H.264 presets map correctly"""
+        assert VideoSpeedPreset.FASTEST.to_ffmpeg_preset("h264") == "ultrafast"
+        assert VideoSpeedPreset.FAST.to_ffmpeg_preset("h264") == "veryfast"
+        assert VideoSpeedPreset.BALANCED.to_ffmpeg_preset("h264") == "medium"
+        assert VideoSpeedPreset.QUALITY.to_ffmpeg_preset("h264") == "slow"
+        assert VideoSpeedPreset.BEST.to_ffmpeg_preset("h264") == "veryslow"
+        assert VideoSpeedPreset.AUTO.to_ffmpeg_preset("h264") == "medium"
+
+    def test_to_ffmpeg_preset_vp9(self):
+        """VP9 presets map correctly"""
+        assert VideoSpeedPreset.FASTEST.to_ffmpeg_preset("vp9") == "0"
+        assert VideoSpeedPreset.FAST.to_ffmpeg_preset("vp9") == "1"
+        assert VideoSpeedPreset.BALANCED.to_ffmpeg_preset("vp9") == "2"
+        assert VideoSpeedPreset.QUALITY.to_ffmpeg_preset("vp9") == "3"
+        assert VideoSpeedPreset.BEST.to_ffmpeg_preset("vp9") == "4"
+        assert VideoSpeedPreset.AUTO.to_ffmpeg_preset("vp9") == "2"
+
+    def test_to_ffmpeg_preset_libvpx_vp9(self):
+        """libvpx-vp9 codec string also maps to VP9 presets"""
+        assert VideoSpeedPreset.BALANCED.to_ffmpeg_preset("libvpx-vp9") == "2"
+
+    def test_to_ffmpeg_preset_default_to_h264(self):
+        """Unknown codecs default to H.264 mapping"""
+        assert VideoSpeedPreset.BALANCED.to_ffmpeg_preset("unknown") == "medium"
+
+
+class TestQualityToCrf:
+    """Tests for quality_to_crf helper function."""
+
+    def test_h264_quality_boundaries(self):
+        """H.264 quality maps to correct CRF range (12-40)"""
+        assert quality_to_crf(100, "h264") == 12
+        assert quality_to_crf(0, "h264") == 40
+        assert quality_to_crf(50, "h264") == 26
+
+    def test_h264_libx264_alias(self):
+        """libx264 codec string uses H.264 mapping"""
+        assert quality_to_crf(100, "libx264") == 12
+
+    def test_vp9_quality_boundaries(self):
+        """VP9 quality maps to correct CRF range (15-50)"""
+        assert quality_to_crf(100, "vp9") == 15
+        assert quality_to_crf(0, "vp9") == 50
+        assert quality_to_crf(50, "vp9") == 32
+
+    def test_vp9_libvpx_alias(self):
+        """libvpx-vp9 codec string uses VP9 mapping"""
+        assert quality_to_crf(100, "libvpx-vp9") == 15
+
+    def test_quality_clamping(self):
+        """Quality values outside 0-100 are clamped"""
+        assert quality_to_crf(150, "h264") == 12
+        assert quality_to_crf(-50, "h264") == 40
+
+    def test_unknown_codec_fallback(self):
+        """Unknown codecs return default CRF 23"""
+        assert quality_to_crf(50, "unknown_codec") == 23

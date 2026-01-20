@@ -10,7 +10,7 @@ import json
 import numpy as np
 import math
 import torch
-from .._util import VideoContainer, VideoCodec, VideoComponents
+from .._util import VideoContainer, VideoCodec, VideoComponents, VideoSpeedPreset, quality_to_crf
 
 
 def container_to_output_format(container_format: str | None) -> str | None:
@@ -250,10 +250,16 @@ class VideoFromFile(VideoInput):
         path: str | io.BytesIO,
         format: VideoContainer = VideoContainer.AUTO,
         codec: VideoCodec = VideoCodec.AUTO,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        quality: Optional[int] = None,
+        speed: Optional[VideoSpeedPreset] = None,
+        profile: Optional[str] = None,
+        tune: Optional[str] = None,
+        row_mt: bool = True,
+        tile_columns: Optional[int] = None,
     ):
         if isinstance(self.__file, io.BytesIO):
-            self.__file.seek(0)  # Reset the BytesIO object to the beginning
+            self.__file.seek(0)
         with av.open(self.__file, mode='r') as container:
             container_format = container.format.name
             video_encoding = container.streams.video[0].codec.name if len(container.streams.video) > 0 else None
@@ -261,6 +267,10 @@ class VideoFromFile(VideoInput):
             if format != VideoContainer.AUTO and format not in container_format.split(","):
                 reuse_streams = False
             if codec != VideoCodec.AUTO and codec != video_encoding and video_encoding is not None:
+                reuse_streams = False
+            if quality is not None or speed is not None:
+                reuse_streams = False
+            if profile is not None or tune is not None or tile_columns is not None:
                 reuse_streams = False
 
             if not reuse_streams:
@@ -270,7 +280,13 @@ class VideoFromFile(VideoInput):
                     path,
                     format=format,
                     codec=codec,
-                    metadata=metadata
+                    metadata=metadata,
+                    quality=quality,
+                    speed=speed,
+                    profile=profile,
+                    tune=tune,
+                    row_mt=row_mt,
+                    tile_columns=tile_columns,
                 )
 
             streams = container.streams
@@ -330,54 +346,126 @@ class VideoFromComponents(VideoInput):
         path: str,
         format: VideoContainer = VideoContainer.AUTO,
         codec: VideoCodec = VideoCodec.AUTO,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        quality: Optional[int] = None,
+        speed: Optional[VideoSpeedPreset] = None,
+        profile: Optional[str] = None,
+        tune: Optional[str] = None,
+        row_mt: bool = True,
+        tile_columns: Optional[int] = None,
     ):
-        if format != VideoContainer.AUTO and format != VideoContainer.MP4:
-            raise ValueError("Only MP4 format is supported for now")
-        if codec != VideoCodec.AUTO and codec != VideoCodec.H264:
-            raise ValueError("Only H264 codec is supported for now")
-        extra_kwargs = {}
-        if isinstance(format, VideoContainer) and format != VideoContainer.AUTO:
-            extra_kwargs["format"] = format.value
-        with av.open(path, mode='w', options={'movflags': 'use_metadata_tags'}, **extra_kwargs) as output:
-            # Add metadata before writing any streams
+        """
+        Save video to file with optional encoding parameters.
+
+        Args:
+            path: Output file path
+            format: Container format (mp4, webm, or auto)
+            codec: Video codec (h264, vp9, or auto)
+            metadata: Optional metadata dict to embed
+            quality: Quality percentage 0-100 (100=best). Maps to CRF internally.
+            speed: Encoding speed preset. Slower = better compression.
+            profile: H.264 profile (baseline, main, high)
+            tune: H.264 tune option (film, animation, grain, etc.)
+            row_mt: VP9 row-based multi-threading
+            tile_columns: VP9 tile columns (power of 2)
+        """
+        resolved_format = format
+        resolved_codec = codec
+
+        if resolved_format == VideoContainer.AUTO:
+            resolved_format = VideoContainer.MP4
+        if resolved_codec == VideoCodec.AUTO:
+            if resolved_format == VideoContainer.WEBM:
+                resolved_codec = VideoCodec.VP9
+            else:
+                resolved_codec = VideoCodec.H264
+
+        if resolved_format == VideoContainer.WEBM and resolved_codec == VideoCodec.H264:
+            raise ValueError("H264 codec is not supported with WebM container")
+        if resolved_format == VideoContainer.MP4 and resolved_codec == VideoCodec.VP9:
+            raise ValueError("VP9 codec is not supported with MP4 container")
+
+        codec_map = {
+            VideoCodec.H264: "libx264",
+            VideoCodec.VP9: "libvpx-vp9",
+        }
+        if resolved_codec not in codec_map:
+            raise ValueError(f"Unsupported codec: {resolved_codec}")
+        ffmpeg_codec = codec_map[resolved_codec]
+
+        extra_kwargs = {"format": resolved_format.value}
+
+        container_options = {}
+        if resolved_format == VideoContainer.MP4:
+            container_options["movflags"] = "use_metadata_tags"
+
+        with av.open(path, mode='w', options=container_options, **extra_kwargs) as output:
             if metadata is not None:
                 for key, value in metadata.items():
                     output.metadata[key] = json.dumps(value)
 
             frame_rate = Fraction(round(self.__components.frame_rate * 1000), 1000)
-            # Create a video stream
-            video_stream = output.add_stream('h264', rate=frame_rate)
+            video_stream = output.add_stream(ffmpeg_codec, rate=frame_rate)
             video_stream.width = self.__components.images.shape[2]
             video_stream.height = self.__components.images.shape[1]
-            video_stream.pix_fmt = 'yuv420p'
 
-            # Create an audio stream
+            video_stream.pix_fmt = 'yuv420p'
+            if resolved_codec == VideoCodec.VP9:
+                video_stream.bit_rate = 0
+
+            if quality is not None:
+                crf = quality_to_crf(quality, ffmpeg_codec)
+                video_stream.options['crf'] = str(crf)
+
+            if speed is not None and speed != VideoSpeedPreset.AUTO:
+                if isinstance(speed, str):
+                    speed = VideoSpeedPreset(speed)
+                preset = speed.to_ffmpeg_preset(ffmpeg_codec)
+                if resolved_codec == VideoCodec.VP9:
+                    video_stream.options['cpu-used'] = preset
+                else:
+                    video_stream.options['preset'] = preset
+
+            # H.264-specific options
+            if resolved_codec == VideoCodec.H264:
+                if profile is not None:
+                    video_stream.options['profile'] = profile
+                if tune is not None:
+                    video_stream.options['tune'] = tune
+
+            # VP9-specific options
+            if resolved_codec == VideoCodec.VP9:
+                if row_mt:
+                    video_stream.options['row-mt'] = '1'
+                if tile_columns is not None:
+                    video_stream.options['tile-columns'] = str(tile_columns)
+
             audio_sample_rate = 1
             audio_stream: Optional[av.AudioStream] = None
             if self.__components.audio:
                 audio_sample_rate = int(self.__components.audio['sample_rate'])
-                audio_stream = output.add_stream('aac', rate=audio_sample_rate)
+                audio_codec = 'libopus' if resolved_format == VideoContainer.WEBM else 'aac'
+                audio_stream = output.add_stream(audio_codec, rate=audio_sample_rate)
 
-            # Encode video
             for i, frame in enumerate(self.__components.images):
-                img = (frame * 255).clamp(0, 255).byte().cpu().numpy() # shape: (H, W, 3)
-                frame = av.VideoFrame.from_ndarray(img, format='rgb24')
-                frame = frame.reformat(format='yuv420p')  # Convert to YUV420P as required by h264
-                packet = video_stream.encode(frame)
+                img = (frame * 255).clamp(0, 255).byte().cpu().numpy()
+                video_frame = av.VideoFrame.from_ndarray(img, format='rgb24')
+                video_frame = video_frame.reformat(format='yuv420p')
+                packet = video_stream.encode(video_frame)
                 output.mux(packet)
 
-            # Flush video
             packet = video_stream.encode(None)
             output.mux(packet)
 
             if audio_stream and self.__components.audio:
                 waveform = self.__components.audio['waveform']
                 waveform = waveform[:, :, :math.ceil((audio_sample_rate / frame_rate) * self.__components.images.shape[0])]
-                frame = av.AudioFrame.from_ndarray(waveform.movedim(2, 1).reshape(1, -1).float().numpy(), format='flt', layout='mono' if waveform.shape[1] == 1 else 'stereo')
-                frame.sample_rate = audio_sample_rate
-                frame.pts = 0
-                output.mux(audio_stream.encode(frame))
-
-                # Flush encoder
+                audio_frame = av.AudioFrame.from_ndarray(
+                    waveform.movedim(2, 1).reshape(1, -1).float().numpy(),
+                    format='flt',
+                    layout='mono' if waveform.shape[1] == 1 else 'stereo'
+                )
+                audio_frame.sample_rate = audio_sample_rate
+                audio_frame.pts = 0
+                output.mux(audio_stream.encode(audio_frame))
                 output.mux(audio_stream.encode(None))
