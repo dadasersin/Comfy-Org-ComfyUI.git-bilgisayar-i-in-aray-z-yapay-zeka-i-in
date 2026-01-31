@@ -73,7 +73,7 @@ def cast_to_input(weight, input, non_blocking=False, copy=True):
 
 
 def cast_bias_weight(s, input=None, dtype=None, device=None, bias_dtype=None, offloadable=False):
-    # NOTE: offloadable=False is a a legacy and if you are a custom node author reading this please pass
+    # NOTE: offloadable=False is a legacy mode and if you are a custom node author reading this please pass
     # offloadable=True and call uncast_bias_weight() after your last usage of the weight/bias. This
     # will add async-offload support to your cast and improve performance.
     if input is not None:
