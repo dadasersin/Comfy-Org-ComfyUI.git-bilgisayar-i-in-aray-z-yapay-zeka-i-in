@@ -677,8 +677,12 @@ class ModelPatcher:
             self.pinned.remove(key)
 
     def unpin_all_weights(self):
-        for key in list(self.pinned):
-            self.unpin_weight(key)
+        if hasattr(self, 'pinned'):  # Safety check
+            for key in list(self.pinned):
+                self.unpin_weight(key)
+        else:
+            # Log or skip: self.pinned was not set
+            pass
 
     def _load_list(self, prio_comfy_cast_weights=False):
         loading = []
@@ -1403,8 +1407,14 @@ class ModelPatcher:
         return self.model.state_dict_for_saving(unet_state_dict, clip_state_dict=clip_state_dict, vae_state_dict=vae_state_dict, clip_vision_state_dict=clip_vision_state_dict)
 
     def __del__(self):
-        self.unpin_all_weights()
-        self.detach(unpatch_all=False)
+        try:
+            if hasattr(self, 'pinned'):
+                self.unpin_all_weights()
+                self.detach(unpatch_all=False)
+        except Exception as e:
+            # Suppress errors in destructor to avoid noise
+            pass
+
 
 class ModelPatcherDynamic(ModelPatcher):
 
