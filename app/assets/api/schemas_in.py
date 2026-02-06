@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import (
@@ -9,6 +10,61 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+
+class UploadError(Exception):
+    """Error during upload parsing with HTTP status and code (used in HTTP layer only)."""
+
+    def __init__(self, status: int, code: str, message: str):
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+
+
+class AssetValidationError(Exception):
+    """Validation error in asset processing (invalid tags, metadata, etc.)."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+class AssetNotFoundError(Exception):
+    """Asset or asset content not found."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class HashMismatchError(Exception):
+    """Uploaded file hash does not match provided hash."""
+
+    pass
+
+
+class DependencyMissingError(Exception):
+    """A required dependency is not installed."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+@dataclass
+class ParsedUpload:
+    """Result of parsing a multipart upload request."""
+
+    file_present: bool
+    file_written: int
+    file_client_name: str | None
+    tmp_path: str | None
+    tags_raw: list[str]
+    provided_name: str | None
+    user_metadata_raw: str | None
+    provided_hash: str | None
+    provided_hash_exists: bool | None
+
 
 class ListAssetsQuery(BaseModel):
     include_tags: list[str] = Field(default_factory=list)
@@ -21,7 +77,9 @@ class ListAssetsQuery(BaseModel):
     limit: conint(ge=1, le=500) = 20
     offset: conint(ge=0) = 0
 
-    sort: Literal["name", "created_at", "updated_at", "size", "last_access_time"] = "created_at"
+    sort: Literal["name", "created_at", "updated_at", "size", "last_access_time"] = (
+        "created_at"
+    )
     order: Literal["asc", "desc"] = "desc"
 
     @field_validator("include_tags", "exclude_tags", mode="before")
@@ -61,7 +119,7 @@ class UpdateAssetBody(BaseModel):
     user_metadata: dict[str, Any] | None = None
 
     @model_validator(mode="after")
-    def _at_least_one(self):
+    def _validate_at_least_one_field(self):
         if self.name is None and self.user_metadata is None:
             raise ValueError("Provide at least one of: name, user_metadata.")
         return self
@@ -90,7 +148,7 @@ class CreateFromHashBody(BaseModel):
 
     @field_validator("tags", mode="before")
     @classmethod
-    def _tags_norm(cls, v):
+    def _normalize_tags_field(cls, v):
         if v is None:
             return []
         if isinstance(v, list):
@@ -163,6 +221,7 @@ class UploadAssetSpec(BaseModel):
     Files created via this endpoint are stored on disk using the **content hash** as the filename stem
     and the original extension is preserved when available.
     """
+
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
 
     tags: list[str] = Field(..., min_length=1)
@@ -260,5 +319,7 @@ class UploadAssetSpec(BaseModel):
             raise ValueError("first tag must be one of: models, input, output")
         if root == "models":
             if len(self.tags) < 2:
-                raise ValueError("models uploads require a category tag as the second tag")
+                raise ValueError(
+                    "models uploads require a category tag as the second tag"
+                )
         return self
