@@ -439,7 +439,8 @@ class PromptServer():
                     return web.Response(status=400)
 
                 # validation for security: prevent accessing arbitrary path
-                if filename[0] == '/' or '..' in filename:
+                # Check for path traversal patterns (../ or /..) but allow consecutive dots in filename
+                if filename[0] == '/' or '/..' in filename or filename.startswith('..'):
                     return web.Response(status=400)
 
                 if output_dir is None:
@@ -483,7 +484,8 @@ class PromptServer():
                     return web.Response(status=400)
 
                 # validation for security: prevent accessing arbitrary path
-                if filename[0] == '/' or '..' in filename:
+                # Check for path traversal patterns (../ or /..) but allow consecutive dots in filename
+                if filename[0] == '/' or '/..' in filename or filename.startswith('..'):
                     return web.Response(status=400)
 
                 if output_dir is None:
