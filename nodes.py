@@ -2452,6 +2452,25 @@ async def init_builtin_extra_nodes():
     return import_failed
 
 
+async def init_builtin_essential_nodes():
+    """
+    Initializes the built-in essential nodes in ComfyUI.
+
+    This function loads the essential node files located in the "comfy_essentials" directory.
+    """
+    essentials_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy_essentials")
+    essentials_files = [
+        "nodes_conditioning.py",
+    ]
+
+    import_failed = []
+    for node_file in essentials_files:
+        if not await load_custom_node(os.path.join(essentials_dir, node_file), module_parent="essentials"):
+            import_failed.append(node_file)
+
+    return import_failed
+
+
 async def init_builtin_api_nodes():
     api_nodes_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy_api_nodes")
     api_nodes_files = sorted(glob.glob(os.path.join(api_nodes_dir, "nodes_*.py")))
@@ -2474,6 +2493,7 @@ async def init_public_apis():
 async def init_extra_nodes(init_custom_nodes=True, init_api_nodes=True):
     await init_public_apis()
 
+    import_failed_essentials = await init_builtin_essential_nodes()
     import_failed = await init_builtin_extra_nodes()
 
     import_failed_api = []
@@ -2499,6 +2519,17 @@ async def init_extra_nodes(init_custom_nodes=True, init_api_nodes=True):
     if len(import_failed) > 0:
         logging.warning("WARNING: some comfy_extras/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
         for node in import_failed:
+            logging.warning("IMPORT FAILED: {}".format(node))
+        logging.warning("\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
+        if args.windows_standalone_build:
+            logging.warning("Please run the update script: update/update_comfyui.bat")
+        else:
+            logging.warning("Please do a: pip install -r requirements.txt")
+        logging.warning("")
+
+    if len(import_failed_essentials) > 0:
+        logging.warning("WARNING: some comfy_essentials/ nodes did not import correctly. This may be because they are missing some dependencies.\n")
+        for node in import_failed_essentials:
             logging.warning("IMPORT FAILED: {}".format(node))
         logging.warning("\nThis issue might be caused by new missing dependencies added the last time you updated ComfyUI.")
         if args.windows_standalone_build:
