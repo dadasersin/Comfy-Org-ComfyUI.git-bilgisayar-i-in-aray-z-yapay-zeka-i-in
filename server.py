@@ -439,8 +439,9 @@ class PromptServer():
                     return web.Response(status=400)
 
                 # validation for security: prevent accessing arbitrary path
-                # Check for path traversal patterns (../ or /..) but allow consecutive dots in filename
-                if filename[0] == '/' or '/..' in filename or filename.startswith('..'):
+                # Normalize backslashes to forward slashes to handle Windows-style path traversal (e.g., folder\..\secret)
+                normalized = filename.replace('\\', '/')
+                if normalized[0] == '/' or '/..' in normalized or normalized.startswith('..'):
                     return web.Response(status=400)
 
                 if output_dir is None:
@@ -484,8 +485,9 @@ class PromptServer():
                     return web.Response(status=400)
 
                 # validation for security: prevent accessing arbitrary path
-                # Check for path traversal patterns (../ or /..) but allow consecutive dots in filename
-                if filename[0] == '/' or '/..' in filename or filename.startswith('..'):
+                # Normalize backslashes to forward slashes to handle Windows-style path traversal (e.g., folder\..\secret)
+                normalized = filename.replace('\\', '/')
+                if normalized[0] == '/' or '/..' in normalized or normalized.startswith('..'):
                     return web.Response(status=400)
 
                 if output_dir is None:
