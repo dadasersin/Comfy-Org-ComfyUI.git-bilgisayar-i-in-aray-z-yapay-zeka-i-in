@@ -3,6 +3,7 @@ import sys
 import asyncio
 import traceback
 import time
+from pathlib import PurePosixPath
 
 import nodes
 import folder_paths
@@ -439,9 +440,10 @@ class PromptServer():
                     return web.Response(status=400)
 
                 # validation for security: prevent accessing arbitrary path
-                # Normalize backslashes to forward slashes to handle Windows-style path traversal (e.g., folder\..\secret)
+                # Normalize backslashes and use standard library to parse path components
                 normalized = filename.replace('\\', '/')
-                if normalized[0] == '/' or '/..' in normalized or normalized.startswith('..'):
+                path = PurePosixPath(normalized)
+                if path.is_absolute() or '..' in path.parts:
                     return web.Response(status=400)
 
                 if output_dir is None:
@@ -485,9 +487,10 @@ class PromptServer():
                     return web.Response(status=400)
 
                 # validation for security: prevent accessing arbitrary path
-                # Normalize backslashes to forward slashes to handle Windows-style path traversal (e.g., folder\..\secret)
+                # Normalize backslashes and use standard library to parse path components
                 normalized = filename.replace('\\', '/')
-                if normalized[0] == '/' or '/..' in normalized or normalized.startswith('..'):
+                path = PurePosixPath(normalized)
+                if path.is_absolute() or '..' in path.parts:
                     return web.Response(status=400)
 
                 if output_dir is None:
