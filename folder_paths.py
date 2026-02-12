@@ -472,6 +472,18 @@ def get_save_image_path(filename_prefix: str, output_dir: str, image_width=0, im
         counter = 1
     return full_output_folder, filename, counter, subfolder, filename_prefix
 
+def get_model_placeholder(folder_name: str) -> str:
+    """Generate placeholder text for empty model dropdowns.
+
+    Args:
+        folder_name: The name of the model folder (e.g., "checkpoints", "loras").
+
+    Returns:
+        A user-friendly placeholder string indicating where models should be placed.
+    """
+    return f"No models found in ComfyUI/models/{folder_name} folder..."
+
+
 def get_input_subfolders() -> list[str]:
     """Returns a list of all subfolder paths in the input directory, recursively.
 
