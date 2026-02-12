@@ -201,7 +201,7 @@ class PromptServer():
         mimetypes.add_type('image/webp', '.webp')
 
         self.user_manager = UserManager()
-        self.model_file_manager = ModelFileManager()
+        self.model_file_manager = ModelFileManager(is_download_model_enabled=lambda: self.user_manager.settings.get_settings(None).get("Comfy.ModelDownloadEnabled", False))
         self.custom_node_manager = CustomNodeManager()
         self.subgraph_manager = SubgraphManager()
         self.internal_routes = InternalRoutes(self)
