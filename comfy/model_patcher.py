@@ -27,6 +27,7 @@ from typing import Callable, Optional
 
 import torch
 
+import comfy.model_base
 import comfy.float
 import comfy.hooks
 import comfy.lora
@@ -1531,7 +1532,21 @@ class ModelPatcherDynamic(ModelPatcher):
                         geometry = comfy.memory_management.TensorGeometry(shape=weight.shape, dtype=model_dtype)
                     return comfy.memory_management.vram_aligned_size(geometry)
 
-                if hasattr(m, "comfy_cast_weights"):
+                def force_load_param(self, param_key, device_to):
+                    key = key_param_name_to_key(n, param_key)
+                    if key in self.backup:
+                        comfy.utils.set_attr_param(self.model, key, self.backup[key].weight)
+                    self.patch_weight_to_device(key, device_to=device_to)
+
+                if isinstance(self.model, comfy.model_base.Flux) and "img_in" in n:
+                    #FIXME: Handle this case generically. Analyze the LoRA for whether it applies
+                    #a geometry change and handle it and fix readers of weight geometry to read
+                    #a geometry object independent of the actual pre-lorafied weight. But for the
+                    #moment just handle this special case as a static GPU load.
+                    force_load_param(self, "weight", device_to)
+                    force_load_param(self, "bias", device_to)
+
+                elif hasattr(m, "comfy_cast_weights"):
                     m.comfy_cast_weights = True
                     m.pin_failed = False
                     m.seed_key = n
@@ -1601,6 +1616,11 @@ class ModelPatcherDynamic(ModelPatcher):
         if unpatch_weights:
             self.partially_unload_ram(1e32)
             self.partially_unload(None, 1e32)
+
+            keys = list(self.backup.keys())
+            for k in keys:
+                bk = self.backup[k]
+                comfy.utils.set_attr_param(self.model, k, bk.weight)
 
     def partially_load(self, device_to, extra_memory=0, force_patch_weights=False):
         assert not force_patch_weights #See above
