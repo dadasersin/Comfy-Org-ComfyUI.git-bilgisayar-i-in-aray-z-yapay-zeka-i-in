@@ -55,11 +55,6 @@ cpu_state = CPUState.GPU
 
 total_vram = 0
 
-
-# Training Related State
-in_training = False
-
-
 def get_supported_float8_types():
     float8_types = []
     try:
@@ -1236,6 +1231,23 @@ def cast_to(weight, dtype=None, device=None, non_blocking=False, copy=False, str
         r.copy_(weight, non_blocking=non_blocking)
 
         return r
+
+    target_device = device
+    if target_device is not None and is_device_mps(target_device):
+        is_quantized = hasattr(weight, "storage_dtype")
+        real_dtype = weight.storage_dtype if is_quantized else weight.dtype
+        if real_dtype in FLOAT8_TYPES:
+            if is_quantized:
+                # MPS workaround: ensure everything is on CPU before dequantizing
+                # This prevents 'Trying to convert Float8_e4m3fn to the MPS backend' errors
+                # if the tensor or its scale are partially on MPS.
+                if weight.device.type != "cpu":
+                    weight = weight.to("cpu")
+                weight = weight.dequantize()
+            if weight.dtype in FLOAT8_TYPES:
+                weight = weight.float()
+            weight = weight.to(target_device, dtype=torch.float16)
+            dtype = torch.float16 if dtype is None else dtype
 
     if device is None or weight.device == device:
         if not copy:
