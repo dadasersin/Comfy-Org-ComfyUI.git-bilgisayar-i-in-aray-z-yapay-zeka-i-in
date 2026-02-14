@@ -15,3 +15,5 @@ spandrel
 einops
 transformers
 safetensors
+comfy_kitchen
+comfy_aimdo
