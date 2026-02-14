@@ -46,6 +46,12 @@ ComfyUI lets you design and execute advanced stable diffusion pipelines using a 
 - Get the latest commits and completely portable.
 - Available on Windows.
 
+#### [Docker Install](#running-with-docker)
+- Run ComfyUI inside an isolated Docker container
+- Most secure way to run ComfyUI and custom node packs
+- Requires Docker and Docker Compose
+- Supports NVIDIA GPUs (Not tested on other hardware.)
+
 #### [Manual Install](#manual-install-windows-linux)
 Supports all operating systems and GPU types (NVIDIA, AMD, Intel, Apple Silicon, Ascend).
 
@@ -350,6 +356,31 @@ For models compatible with Iluvatar Extension for PyTorch. Here's a step-by-step
 | `--enable-manager-legacy-ui` | Use the legacy manager UI instead of the new UI (requires `--enable-manager`) |
 | `--disable-manager-ui` | Disable the manager UI and endpoints while keeping background features like security checks and scheduled installation completion (requires `--enable-manager`) |
 
+## Running with Docker
+
+Start by installing Docker, Docker Compose, and the NVIDIA Container Toolkit on
+your host. Next, edit `compose.yaml` and update the `UID` and `GID` variables to
+match your host user's UID and GID. Also ensure that `PIP_EXTRA_INDEX_URL`
+points to the recommended non-experimental index URL for your hardware, as
+described in the beginning of the [manual installation
+section](#manual-install-windows-linux). Additional fields are documented in the
+file for further customization.
+
+Once ready, build and run the image locally:
+
+```shell
+# (Re)build the Docker image. Run this before the first start, after updating
+# ComfyUI, or after changing any build arguments in `compose.yaml`.
+docker compose build
+# Start ComfyUI. This reuses the most recently built image.
+docker compose up
+```
+
+To stop and remove the container along with its volumes, run:
+
+```shell
+docker compose down -v
+```
 
 # Running
 
