@@ -1,10 +1,17 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
 torchaudio
---extra-index-url https://download.pytorch.org/whl/cpu
 numpy
 Pillow
 scipy
 tqdm
 aiohttp
 pyyaml
+SQLAlchemy
+alembic
+kornia
+spandrel
+einops
+transformers
+safetensors
