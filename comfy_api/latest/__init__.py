@@ -10,6 +10,7 @@ from ._input_impl import VideoFromFile, VideoFromComponents
 from ._util import VideoCodec, VideoContainer, VideoComponents, MESH, VOXEL, File3D
 from . import _io_public as io
 from . import _ui_public as ui
+from . import _node_replace_public as node_replace
 from comfy_execution.utils import get_executing_context
 from comfy_execution.progress import get_progress_state, PreviewImageTuple
 from PIL import Image
@@ -20,6 +21,14 @@ import numpy as np
 class ComfyAPI_latest(ComfyAPIBase):
     VERSION = "latest"
     STABLE = False
+
+    class NodeReplacement(ProxiedSingleton):
+        async def register(self, node_replace: 'node_replace.NodeReplace') -> None:
+            """Register a node replacement mapping."""
+            from server import PromptServer
+            PromptServer.instance.node_replace_manager.register(node_replace)
+
+    node_replacement: NodeReplacement
 
     class Execution(ProxiedSingleton):
         async def set_progress(
@@ -131,4 +140,5 @@ __all__ = [
     "IO",
     "ui",
     "UI",
+    "node_replace",
 ]
