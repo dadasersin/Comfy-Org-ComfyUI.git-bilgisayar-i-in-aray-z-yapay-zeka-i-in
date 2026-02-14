@@ -17,3 +17,5 @@ transformers
 safetensors
 comfy_kitchen
 comfy_aimdo
+psutil
+triton
