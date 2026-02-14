@@ -1309,6 +1309,7 @@ class NodeInfoV1:
     api_node: bool=None
     price_badge: dict | None = None
     search_aliases: list[str]=None
+    main_category: str=None
 
 
 @dataclass
@@ -1430,6 +1431,8 @@ class Schema:
     """Flags a node as expandable, allowing NodeOutput to include 'expand' property."""
     accept_all_inputs: bool=False
     """When True, all inputs from the prompt will be passed to the node as kwargs, even if not defined in the schema."""
+    main_category: str | None = None
+    """Optional main category for top-level tabs in the node library (e.g., 'Basic', 'Image Tools', 'Partner Nodes')."""
 
     def validate(self):
         '''Validate the schema:
@@ -1536,6 +1539,7 @@ class Schema:
             python_module=getattr(cls, "RELATIVE_PYTHON_MODULE", "nodes"),
             price_badge=self.price_badge.as_dict(self.inputs) if self.price_badge is not None else None,
             search_aliases=self.search_aliases if self.search_aliases else None,
+            main_category=self.main_category,
         )
         return info
 

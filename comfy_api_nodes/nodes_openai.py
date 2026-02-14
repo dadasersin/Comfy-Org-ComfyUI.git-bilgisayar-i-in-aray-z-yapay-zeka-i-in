@@ -576,6 +576,7 @@ class OpenAIChatNode(IO.ComfyNode):
             node_id="OpenAIChatNode",
             display_name="OpenAI ChatGPT",
             category="api node/text/OpenAI",
+            main_category="Text Generation",
             description="Generate text responses from an OpenAI model.",
             inputs=[
                 IO.String.Input(

@@ -687,6 +687,10 @@ class PromptServer():
                 info['api_node'] = obj_class.API_NODE
 
             info['search_aliases'] = getattr(obj_class, 'SEARCH_ALIASES', [])
+
+            if hasattr(obj_class, 'MAIN_CATEGORY'):
+                info['main_category'] = obj_class.MAIN_CATEGORY
+
             return info
 
         @routes.get("/object_info")
